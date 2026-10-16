@@ -46,43 +46,64 @@ router.post('/', async (req, res, next) => {
 });
 
 // End intervention and return to agent
+
 router.post('/release', async (req, res, next) => {
   try {
     const { conversationId, supervisorNotes } = req.body;
-    
+
     if (!conversationId) {
-      return res.status(400).json({ message: 'Conversation ID is required' });
+      return res.status(400).json({
+        message: 'Conversation ID is required',
+      });
     }
-    
-    const conversation = await Conversation.findOne({ id: conversationId });
-    
+
+    const conversation = await Conversation.findOne({
+      id: conversationId,
+    });
+
     if (!conversation) {
-      return res.status(404).json({ message: 'Conversation not found' });
+      return res.status(404).json({
+        message: 'Conversation not found',
+      });
     }
-    
-    // Only allow release if there was an intervention
-    if (!conversation.humanIntervention || !conversation.humanIntervention.occurred) {
-      return res.status(400).json({ message: 'No active intervention to release' });
+
+    if (
+      !conversation.humanIntervention ||
+      !conversation.humanIntervention.occurred
+    ) {
+      return res.status(400).json({
+        message: 'No active intervention to release',
+      });
     }
-    
-    // Update status back to active
+
+    // Save supervisor feedback before returning control.
+    if (typeof supervisorNotes === 'string' && supervisorNotes.trim()) {
+      conversation.supervisorNotes = supervisorNotes.trim();
+
+      conversation.humanIntervention.notes = supervisorNotes.trim();
+    }
+
+    // Mark the intervention as finished.
+    conversation.humanIntervention.occurred = false;
+
+    // Return the conversation to the AI workflow.
     conversation.status = 'active';
-    
-    // Add supervisor notes if provided
-    if (supervisorNotes) {
-      conversation.supervisorNotes = supervisorNotes;
-    }
-    
+
     await conversation.save();
-    
-    // This would normally trigger a WebSocket update
-    
-    await simulateDelay(300); // Simulate network delay
-    
-    res.json({ message: 'Intervention released, control returned to agent' });
+
+    await simulateDelay(300);
+
+    return res.json({
+      message: 'Intervention released. Control returned to the AI.',
+      conversationId: conversation.id,
+      status: conversation.status,
+      humanIntervention: conversation.humanIntervention,
+      supervisorNotes: conversation.supervisorNotes,
+    });
   } catch (error) {
     next(error);
   }
 });
+
 
 module.exports = router;
