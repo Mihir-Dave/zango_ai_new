@@ -16,7 +16,7 @@ import {
   FiSettings, 
   FiMessageCircle, 
   FiBarChart2, 
-  FiUsers,
+  
   FiHelpCircle,
   FiLogOut 
 } from 'react-icons/fi';
@@ -34,7 +34,7 @@ const Sidebar = () => {
   
   const navItems = [
   { name: 'Dashboard', icon: FiHome, path: '/' },
-  { name: 'Conversations', icon: FiMessageCircle, path: '/' },
+  { name: 'Conversations', icon: FiMessageCircle, path: '/conversations' },
   { name: 'AI Agent', icon: FiSettings, path: '/agent-config' },
   { name: 'Templates', icon: FiBarChart2, path: '/analysis' },
 ];

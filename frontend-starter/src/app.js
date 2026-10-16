@@ -10,7 +10,7 @@ import ConversationView from './pages/ConversationView';
 import Analysis from './pages/Analysis';
 import { WebSocketProvider } from './context/WebSocketContext';
 import { AppDataProvider } from './context/AppDataContext';
-
+//import ConversationView from './pages/ConversationView';
 function App() {
   return (
     <ChakraProvider theme={theme}>
@@ -20,11 +20,15 @@ function App() {
             <Box minHeight="100vh">
               <Layout>
                 <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/conversation/:id" element={<ConversationView />} />
-                  <Route path="/agent-config" element={<AgentConfig />} />
-                  <Route path="/analysis" element={<Analysis />} />
-                </Routes>
+  <Route path="/" element={<Dashboard />} />
+  <Route path="/conversations" element={<Dashboard />} />
+  <Route
+    path="/conversation/:id"
+    element={<ConversationView />}
+  />
+  <Route path="/agent-config" element={<AgentConfig />} />
+  <Route path="/analysis" element={<Analysis />} />
+</Routes>
               </Layout>
             </Box>
           </Router>

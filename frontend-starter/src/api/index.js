@@ -116,7 +116,7 @@ export const deleteTemplate = async (id) => {
   return response.data;
 };
 
-export const useTemplate = async (id, values) => {
+export const applyTemplate = async (id, values) => {
   const response = await api.post(`/api/templates/${id}/use`, { values });
   return response.data;
 };

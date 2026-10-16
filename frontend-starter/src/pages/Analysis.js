@@ -46,7 +46,7 @@ import {
   createTemplate,
   updateTemplate,
   deleteTemplate,
-  useTemplate,
+  applyTemplate,
 } from '../api';
 
 const CATEGORIES = [
@@ -380,7 +380,7 @@ const Analysis = () => {
 
   const handleResolve = async () => {
     try {
-      const result = await useTemplate(
+      const result = await applyTemplate(
         selectedTemplate._id,
         variableValues
       );
