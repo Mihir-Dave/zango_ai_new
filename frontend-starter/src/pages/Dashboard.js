@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Badge,
   Box,
@@ -93,35 +93,86 @@ export default function Dashboard() {
   const [riskFilter, setRiskFilter] = useState('all');
   const [agentFilter, setAgentFilter] = useState('all');
   const [timeRange, setTimeRange] = useState('30m');
+  const [liveMetrics, setLiveMetrics] = useState(null);
+  const [streamConnected, setStreamConnected] = useState(false);
 
-  const activeCount = conversations.filter(
-    (c) => c.status === 'active' || c.status === 'waiting'
-  ).length;
+  useEffect(() => {
+    const apiUrl =
+      process.env.REACT_APP_API_URL || 'http://localhost:8080';
 
-  const escalatedCount = conversations.filter(
-    (c) => c.status === 'escalated'
-  ).length;
+    const source = new EventSource(
+      `${apiUrl.replace(/\/$/, '')}/api/analytics/stream`
+    );
+
+    source.onopen = () => {
+      setStreamConnected(true);
+    };
+
+    source.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        setLiveMetrics(data);
+        setStreamConnected(true);
+      } catch (error) {
+        console.error('Invalid analytics event:', error);
+      }
+    };
+
+    source.onerror = () => {
+      setStreamConnected(false);
+      // EventSource reconnects automatically when the connection
+      // becomes available again.
+    };
+
+    return () => {
+      source.close();
+    };
+  }, []);
+
+  const activeCount = liveMetrics
+    ? liveMetrics.active + liveMetrics.waiting
+    : conversations.filter(
+        (c) => c.status === 'active' || c.status === 'waiting'
+      ).length;
+
+  const escalatedCount = liveMetrics
+    ? liveMetrics.escalated
+    : conversations.filter(
+        (c) => c.status === 'escalated'
+      ).length;
 
   const criticalCount = conversations.filter(
     (c) => c.alertLevel === 'high' || c.status === 'escalated'
   ).length;
 
-  const averageSentiment = conversations.length
+  const averageSentiment = liveMetrics
+    ? Number(liveMetrics.averageSentiment) || 0
+    : conversations.length
     ? conversations.reduce(
         (sum, c) => sum + (Number(c.metrics?.sentiment) || 0),
         0
       ) / conversations.length
     : 0;
 
-  const satisfaction = conversations.length
-    ? `${Math.max(0, Math.min(100, Math.round(
-        averageSentiment > 1
-          ? averageSentiment
-          : averageSentiment * 100
-      )))}%`
+  const satisfaction = (
+    liveMetrics || conversations.length
+  )
+    ? `${Math.max(
+        0,
+        Math.min(
+          100,
+          Math.round(
+            averageSentiment > 1
+              ? averageSentiment
+              : averageSentiment * 100
+          )
+        )
+      )}%`
     : '—';
 
-  const averageResponse = conversations.length
+  const averageResponse = liveMetrics
+    ? `${(Number(liveMetrics.averageResponseTime) || 0).toFixed(1)}s`
+    : conversations.length
     ? (
         conversations.reduce(
           (sum, c) => sum + (Number(c.metrics?.responseTime) || 0),
@@ -290,6 +341,9 @@ export default function Dashboard() {
           <Text color="gray.500" fontSize="sm" mt={1}>
             Live supervision across customer conversations and AI agents
           </Text>
+          <Badge colorScheme={streamConnected ? 'green' : 'orange'} mt={2}>
+            {streamConnected ? 'Live metrics connected' : 'Connecting to live metrics…'}
+          </Badge>
         </Box>
 
         <HStack spacing={2} wrap="wrap">

@@ -13,6 +13,10 @@ import {
   HStack,
   Spinner,
   Text,
+  FormControl,
+  FormLabel,
+  Input,
+  Select,
   Textarea,
   VStack,
   useToast,
@@ -24,6 +28,8 @@ import {
   interveneInConversation,
   releaseIntervention,
   updateConversationStatus,
+  getTemplates,
+  applyTemplate,
 } from '../api';
 import { useAppData } from '../context/AppDataContext';
 
@@ -40,6 +46,19 @@ const getRiskColor = (level) => {
   if (level === 'medium') return 'orange';
   return 'green';
 };
+const extractTemplateVariables = (content = '') => [
+  ...new Set(
+    [...content.matchAll(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g)]
+      .map((match) => match[1])
+  ),
+];
+
+const previewTemplate = (content = '', values = {}) =>
+  content.replace(
+    /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g,
+    (_, variable) =>
+      values[variable]?.trim() || `{{${variable}}}`
+  );
 
 const ConversationView = () => {
   const { id } = useParams();
@@ -56,10 +75,161 @@ const ConversationView = () => {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [pageError, setPageError] = useState('');
-
+  const [templates, setTemplates] = useState([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [templateValues, setTemplateValues] = useState({});
+  const [listening, setListening] = useState(false);
   const isTakenOver = Boolean(
     conversation?.humanIntervention?.occurred
   );
+
+  const selectedTemplate = templates.find(
+    (template) => String(template._id) === selectedTemplateId
+  );
+
+  const templateVariables = extractTemplateVariables(
+    selectedTemplate?.content || ''
+  );
+
+  const templateMessagePreview = previewTemplate(
+    selectedTemplate?.content || '',
+    templateValues
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    getTemplates({ active: 'all' })
+      .then((data) => {
+        if (!cancelled) {
+          setTemplates(
+            Array.isArray(data)
+              ? data.filter((template) => template.isActive !== false)
+              : []
+          );
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          toast({
+            title: 'Could not load response templates',
+            description:
+              error.response?.data?.message ||
+              'Check the backend connection and try again.',
+            status: 'error',
+            duration: 3000,
+            isClosable: true,
+          });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [toast]);
+
+  const handleInsertTemplate = async () => {
+    if (!selectedTemplate) return;
+
+    const missing = templateVariables.filter(
+      (variable) => !templateValues[variable]?.trim()
+    );
+
+    if (missing.length) {
+      toast({
+        title: 'Fill in all template variables',
+        description: `Required: ${missing.join(', ')}`,
+        status: 'warning',
+        duration: 3000,
+      });
+      return;
+    }
+
+    try {
+      const result = await applyTemplate(
+        selectedTemplate._id,
+        templateValues
+      );
+
+      setDraft((previous) =>
+        previous
+          ? `${previous}\n${result.message}`
+          : result.message
+      );
+
+      toast({
+        title: 'Template added to draft',
+        description: 'Review the message before sending it.',
+        status: 'success',
+        duration: 2500,
+      });
+    } catch (error) {
+      toast({
+        title: 'Could not apply template',
+        description:
+          error.response?.data?.message || error.message,
+        status: 'error',
+        duration: 3500,
+      });
+    }
+  };
+
+  const handleVoiceInput = () => {
+    const SpeechRecognition =
+      window.SpeechRecognition ||
+      window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      toast({
+        title: 'Voice input is not supported',
+        description: 'Try a recent version of Google Chrome.',
+        status: 'error',
+        duration: 3000,
+      });
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-IN';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onstart = () => setListening(true);
+
+    recognition.onend = () => setListening(false);
+
+    recognition.onerror = () => {
+      setListening(false);
+      toast({
+        title: 'Voice recognition failed',
+        description: 'Check microphone permission and try again.',
+        status: 'error',
+        duration: 3000,
+      });
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results?.[0]?.[0]?.transcript;
+
+      if (transcript) {
+        setDraft((previous) =>
+          previous ? `${previous} ${transcript}` : transcript
+        );
+      }
+    };
+
+    try {
+      recognition.start();
+    } catch (error) {
+      setListening(false);
+      toast({
+        title: 'Could not start voice input',
+        description: error.message,
+        status: 'error',
+        duration: 3000,
+      });
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -474,16 +644,118 @@ const ConversationView = () => {
               </Badge>
             </Flex>
 
+            <Box
+              mb={3}
+              p={3}
+              border="1px solid"
+              borderColor="purple.100"
+              borderRadius="lg"
+              bg="purple.50"
+            >
+              <Text fontWeight="semibold" mb={2}>
+                Use a response template
+              </Text>
+
+              <Select
+                placeholder="Choose a response template"
+                value={selectedTemplateId}
+                onChange={(event) => {
+                  setSelectedTemplateId(event.target.value);
+                  setTemplateValues({});
+                }}
+                bg="white"
+                isDisabled={conversation.status === 'resolved'}
+              >
+                {templates.map((template) => (
+                  <option key={template._id} value={template._id}>
+                    {template.name} — {template.category}
+                    {template.sharedWithTeam ? ' (Team)' : ''}
+                  </option>
+                ))}
+              </Select>
+
+              {selectedTemplate && (
+                <VStack align="stretch" spacing={3} mt={3}>
+                  {templateVariables.map((variable) => (
+                    <FormControl key={variable} isRequired>
+                      <FormLabel fontSize="sm">
+                        {variable
+                          .split('_')
+                          .map(
+                            (word) =>
+                              word.charAt(0).toUpperCase() + word.slice(1)
+                          )
+                          .join(' ')}
+                      </FormLabel>
+
+                      <Input
+                        bg="white"
+                        value={templateValues[variable] || ''}
+                        placeholder={`Enter ${variable}`}
+                        onChange={(event) =>
+                          setTemplateValues((previous) => ({
+                            ...previous,
+                            [variable]: event.target.value,
+                          }))
+                        }
+                      />
+                    </FormControl>
+                  ))}
+
+                  <Box bg="white" borderRadius="md" p={3}>
+                    <Text fontWeight="semibold" fontSize="sm" mb={2}>
+                      Message preview
+                    </Text>
+                    <Text fontSize="sm" whiteSpace="pre-wrap">
+                      {templateMessagePreview}
+                    </Text>
+                  </Box>
+
+                  <Button
+                    size="sm"
+                    colorScheme="purple"
+                    onClick={handleInsertTemplate}
+                    isDisabled={
+                      templateVariables.some(
+                        (variable) => !templateValues[variable]?.trim()
+                      ) || conversation.status === 'resolved'
+                    }
+                  >
+                    Insert into draft
+                  </Button>
+                </VStack>
+              )}
+            </Box>
+
             <Textarea
               value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder="Write a message to the customer..."
+              onChange={(event) => setDraft(event.target.value)}
+              placeholder="Write a message or use voice input..."
               resize="vertical"
               minH="100px"
               isDisabled={conversation.status === 'resolved'}
             />
 
-            <Flex justify="flex-end" mt={3}>
+            <Flex
+              justify="space-between"
+              align={{ base: 'stretch', sm: 'center' }}
+              direction={{ base: 'column', sm: 'row' }}
+              gap={2}
+              mt={3}
+            >
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleVoiceInput}
+                isDisabled={
+                  listening ||
+                  busy ||
+                  conversation.status === 'resolved'
+                }
+              >
+                {listening ? 'Listening…' : '🎙️ Speak'}
+              </Button>
+
               <Button
                 bg={PURPLE}
                 color="white"
@@ -491,7 +763,8 @@ const ConversationView = () => {
                 onClick={handleSendMessage}
                 isLoading={busy}
                 isDisabled={
-                  !draft.trim() || conversation.status === 'resolved'
+                  !draft.trim() ||
+                  conversation.status === 'resolved'
                 }
               >
                 Send reply

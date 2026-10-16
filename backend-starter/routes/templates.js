@@ -90,13 +90,14 @@ router.post('/', async (req, res, next) => {
     }
 
     const {
-      name,
-      category,
-      description,
-      content,
-      isActive,
-      createdBy,
-    } = req.body;
+  name,
+  category,
+  description,
+  content,
+  isActive,
+  createdBy,
+  sharedWithTeam,
+} = req.body;
 
     const template = await Template.create({
       name: name.trim(),
@@ -105,6 +106,7 @@ router.post('/', async (req, res, next) => {
       content: content.trim(),
       variables: extractVariables(content),
       isActive: isActive !== false,
+      sharedWithTeam: sharedWithTeam === true,
       createdBy: createdBy || 'Supervisor',
     });
 
@@ -176,12 +178,13 @@ router.patch('/:id', async (req, res, next) => {
     }
 
     const {
-      name,
-      category,
-      description,
-      content,
-      isActive,
-    } = req.body;
+  name,
+  category,
+  description,
+  content,
+  isActive,
+  sharedWithTeam,
+} = req.body;
 
     const template = await Template.findById(req.params.id);
 
@@ -197,6 +200,10 @@ router.patch('/:id', async (req, res, next) => {
 
     if (typeof isActive === 'boolean') {
       template.isActive = isActive;
+    }
+
+    if (typeof sharedWithTeam === 'boolean') {
+      template.sharedWithTeam = sharedWithTeam;
     }
 
     await template.save();

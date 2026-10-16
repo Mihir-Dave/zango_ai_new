@@ -41,6 +41,10 @@ const templateSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    sharedWithTeam: {
+        type: Boolean,
+         default: false,
+    },
     usageCount: {
       type: Number,
       default: 0,

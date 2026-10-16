@@ -64,6 +64,7 @@ const EMPTY_FORM = {
   description: '',
   content: '',
   isActive: true,
+  sharedWithTeam: false,
 };
 
 function getVariables(content = '') {
@@ -280,6 +281,7 @@ const Analysis = () => {
       description: template.description || '',
       content: template.content || '',
       isActive: template.isActive !== false,
+      sharedWithTeam: Boolean(template.sharedWithTeam),
     });
     editor.onOpen();
   };
@@ -353,6 +355,7 @@ const Analysis = () => {
         description: template.description || '',
         content: template.content,
         isActive: !template.isActive,
+        sharedWithTeam: Boolean(template.sharedWithTeam),
       };
 
       await updateTemplate(template._id, updated);
@@ -622,6 +625,18 @@ const Analysis = () => {
               >
                 Make this template active
               </Checkbox>
+              <Checkbox
+  isChecked={Boolean(form.sharedWithTeam)}
+  onChange={(event) =>
+    setForm({
+      ...form,
+      sharedWithTeam: event.target.checked,
+    })
+  }
+  colorScheme="purple"
+>
+  Share this template with the team
+</Checkbox>
             </Stack>
           </ModalBody>
           <ModalFooter gap={3}>
