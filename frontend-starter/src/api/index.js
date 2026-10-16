@@ -24,8 +24,8 @@ api.interceptors.response.use(
 
 // Conversations
 export const getConversations = async (filters = {}) => {
-  const params = new URLSearchParams(filters);
-  const response = await api.get(`/api/conversations?${params}`);
+  const params = { page: 1, limit: 100, ...filters };
+  const response = await api.get('/api/conversations', { params });
   return response.data;
 };
 

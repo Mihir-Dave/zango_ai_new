@@ -172,6 +172,7 @@ export default function Dashboard() {
     agentFilter,
   ]);
 
+  
   const chartData = useMemo(() => {
     const buckets = new Map();
 
@@ -194,17 +195,10 @@ export default function Dashboard() {
       conversations: count,
     }));
 
-    return points.length
-      ? points.slice(-8)
-      : [
-          { time: '09:00', conversations: 4 },
-          { time: '10:00', conversations: 7 },
-          { time: '11:00', conversations: 5 },
-          { time: '12:00', conversations: 9 },
-          { time: '13:00', conversations: 8 },
-          { time: '14:00', conversations: 12 },
-        ];
+    // Display only real conversation data. Never invent chart values.
+    return points.slice(-8);
   }, [conversations]);
+
 
   const queueGroups = useMemo(() => {
     const groups = {};
