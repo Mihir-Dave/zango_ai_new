@@ -23,7 +23,7 @@ function App() {
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/conversation/:id" element={<ConversationView />} />
                   <Route path="/agent-config" element={<AgentConfig />} />
-                  <Route path="/Analysis" element={<Analysis/>} />
+                  <Route path="/analysis" element={<Analysis />} />
                 </Routes>
               </Layout>
             </Box>

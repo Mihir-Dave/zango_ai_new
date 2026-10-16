@@ -33,11 +33,11 @@ const Sidebar = () => {
   const isActive = (path) => location.pathname === path;
   
   const navItems = [
-    { name: 'Dashboard', icon: FiHome, path: '/' },
-    { name: 'Conversations', icon: FiMessageCircle, path: '/conversationView' },
-    { name: 'AI Agent', icon: FiSettings, path: '/agent-config' },
-    { name: 'Templates', icon: FiBarChart2, path: '/analysis' },
-  ];
+  { name: 'Dashboard', icon: FiHome, path: '/' },
+  { name: 'Conversations', icon: FiMessageCircle, path: '/' },
+  { name: 'AI Agent', icon: FiSettings, path: '/agent-config' },
+  { name: 'Templates', icon: FiBarChart2, path: '/analysis' },
+];
   
   return (
     <Box

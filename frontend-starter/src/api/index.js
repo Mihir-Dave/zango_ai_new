@@ -93,4 +93,33 @@ export const getAnalytics = async (params) => {
   return response.data;
 };
 
+
+/* Templates */
+
+export const getTemplates = async (filters = {}) => {
+  const response = await api.get('/api/templates', { params: filters });
+  return response.data;
+};
+
+export const createTemplate = async (template) => {
+  const response = await api.post('/api/templates', template);
+  return response.data;
+};
+
+export const updateTemplate = async (id, template) => {
+  const response = await api.patch(`/api/templates/${id}`, template);
+  return response.data;
+};
+
+export const deleteTemplate = async (id) => {
+  const response = await api.delete(`/api/templates/${id}`);
+  return response.data;
+};
+
+export const useTemplate = async (id, values) => {
+  const response = await api.post(`/api/templates/${id}/use`, { values });
+  return response.data;
+};
+
+
 export default api;
